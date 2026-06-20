@@ -1,3 +1,4 @@
+import os
 import sqlite3
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -10,10 +11,85 @@ from starlette.responses import FileResponse
 from pydantic import BaseModel
 
 ROOT = Path(__file__).resolve().parents[1]
-DB_PATH = ROOT / "server" / "anki.db"
+DB_PATH = Path(os.environ.get("ANKI_DB_PATH", ROOT / "server" / "anki.db"))
 CLIENT_DIST = ROOT / "client" / "dist"
 
 app = FastAPI()
+DB_READY = False
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS categories (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT NOT NULL,
+    position   INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS topics (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+    name        TEXT NOT NULL,
+    position    INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS items (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic_id        INTEGER NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+    title           TEXT NOT NULL,
+    content         TEXT NOT NULL DEFAULT '',
+    content_format  TEXT NOT NULL DEFAULT 'markdown',
+    language        TEXT,
+    source_filename TEXT,
+    ease_factor     REAL    NOT NULL DEFAULT 2.5,
+    interval        INTEGER NOT NULL DEFAULT 0,
+    repetitions     INTEGER NOT NULL DEFAULT 0,
+    due_date        TEXT,
+    created_at      TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    description     TEXT NOT NULL DEFAULT '',
+    link            TEXT,
+    source          TEXT,
+    tags            TEXT,
+    category_id     INTEGER REFERENCES categories(id)
+);
+CREATE TABLE IF NOT EXISTS practices (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id            INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    practiced_at       TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    feeling            TEXT NOT NULL,
+    time_taken_seconds INTEGER,
+    notes              TEXT,
+    prev_interval      INTEGER,
+    new_interval       INTEGER,
+    prev_ease          REAL,
+    new_ease           REAL
+);
+CREATE TABLE IF NOT EXISTS solutions (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id         INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    format          TEXT NOT NULL DEFAULT 'code',
+    language        TEXT,
+    content         TEXT NOT NULL DEFAULT '',
+    source_filename TEXT,
+    position        INTEGER NOT NULL DEFAULT 0,
+    created_at      TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS labels (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS item_labels (
+    item_id  INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    label_id INTEGER NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+    PRIMARY KEY (item_id, label_id)
+);
+CREATE INDEX IF NOT EXISTS idx_topics_category ON topics(category_id);
+CREATE INDEX IF NOT EXISTS idx_items_topic ON items(topic_id);
+CREATE INDEX IF NOT EXISTS idx_items_category ON items(category_id);
+CREATE INDEX IF NOT EXISTS idx_practices_item ON practices(item_id);
+CREATE INDEX IF NOT EXISTS idx_solutions_item ON solutions(item_id);
+CREATE INDEX IF NOT EXISTS idx_item_labels_label ON item_labels(label_id);
+"""
 
 
 class SolutionIn(BaseModel):
@@ -46,7 +122,19 @@ def health():
     return {"ok": True}
 
 
+def init_db():
+    global DB_READY
+    if DB_READY:
+        return
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.executescript(SCHEMA)
+    DB_READY = True
+
+
 def db():
+    init_db()
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
