@@ -83,6 +83,11 @@ export default function Dashboard() {
     if (ok) { await api.deleteItem(it.id); refresh(); }
   }
 
+  async function editItem(it) {
+    const full = await api.item(it.id);
+    setEditor({ item: full });
+  }
+
   const cards = [
     { l: "Due today", v: stats?.dueCount, cls: "due" },
     { l: "Reviews today", v: stats?.reviewsToday },
@@ -198,8 +203,8 @@ export default function Dashboard() {
                   {it.last_practiced ? `${ago(it.last_practiced)} ago` : "never"}
                 </td>
                 <td className="cell-actions">
-                  <button className="btn xs ghost" onClick={() => setEditor({ item: it })}>edit</button>
-                  <button className="btn xs danger" onClick={() => deleteItem(it)}>✕</button>
+                  <button className="btn xs ghost" onClick={() => editItem(it)}>edit</button>
+                  <button className="btn xs danger" onClick={() => deleteItem(it)}>delete</button>
                 </td>
               </tr>
             ))}
