@@ -1,0 +1,13 @@
+node_modules/
+client/node_modules/
+client/dist/
+
+.uv-cache/
+server_py/.venv/
+__pycache__/
+server_py/__pycache__/
+
+# SQLite database + WAL sidecars — local data, not source
+server/anki.db
+server/anki.db-wal
+server/anki.db-shm
