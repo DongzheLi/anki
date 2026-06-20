@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from fastapi import FastAPI
 from fastapi import HTTPException
+from fastapi import Request
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 from pydantic import BaseModel
@@ -120,6 +121,17 @@ class PracticeIn(BaseModel):
 @app.get("/api/health")
 def health():
     return {"ok": True}
+
+
+@app.get("/api/me")
+def me(request: Request):
+    email = (
+        request.headers.get("Cf-Access-Authenticated-User-Email")
+        or request.headers.get("X-Forwarded-Email")
+        or ""
+    )
+    username = email.split("@", 1)[0] if email else "guest"
+    return {"email": email, "username": username}
 
 
 def init_db():

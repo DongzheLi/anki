@@ -17,6 +17,7 @@ const patch = send("PATCH");
 const del = send("DELETE");
 
 export const api = {
+  me: () => fetch("/api/me").then(json),
   tree: () => fetch("/api/tree").then(json),
   taxonomy: () => fetch("/api/taxonomy").then(json),
   stats: () => fetch("/api/stats").then(json),
