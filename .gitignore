@@ -11,3 +11,7 @@ server_py/__pycache__/
 server/anki.db
 server/anki.db-wal
 server/anki.db-shm
+# db-pull artifacts: rolling backup, in-flight download, timestamped backups
+server/anki.db.prev
+server/.anki.db.incoming
+server/*.bak-*

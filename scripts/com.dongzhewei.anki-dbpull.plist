@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchAgent: pull the production anki DB down twice a day.
+  Install:  cp this to ~/Library/LaunchAgents/ and
+            launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dongzhewei.anki-dbpull.plist
+  Run now:  launchctl kickstart -k gui/$(id -u)/com.dongzhewei.anki-dbpull
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.dongzhewei.anki-dbpull</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/dwei/code/dongzhewei/anki/scripts/pull-db.sh</string>
+  </array>
+
+  <!-- launchd hands jobs a minimal PATH; ssh/scp/python3 all live in /usr/bin. -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <!-- 09:00 and 21:00 local. If the Mac is asleep then, launchd runs it on wake. -->
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Hour</key><integer>21</integer><key>Minute</key><integer>0</integer></dict>
+  </array>
+
+  <key>StandardOutPath</key>
+  <string>/Users/dwei/Library/Logs/anki-dbpull.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/dwei/Library/Logs/anki-dbpull.log</string>
+
+  <!-- Don't fire on load; the calendar schedule drives it. -->
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>
