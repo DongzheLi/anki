@@ -212,7 +212,7 @@ a { color: var(--accent); text-decoration: none; }
 .col-practiced { width: 95px; }
 .col-difficulty { width: 105px; }
 .col-last { width: 80px; }
-.col-actions { width: 105px; }
+.col-actions { width: 132px; }
 .data-table th {
   text-align: left; font-weight: 600; font-size: 10.5px; color: var(--muted);
   text-transform: uppercase; letter-spacing: 0.03em;
@@ -297,8 +297,26 @@ a { color: var(--accent); text-decoration: none; }
 .diff-chip.hard { color: var(--hard); background: var(--hard-soft); border-color: var(--hard-border); }
 .diff-chip.good { color: var(--good); background: var(--good-soft); border-color: var(--good-border); }
 .diff-chip.easy { color: var(--easy); background: var(--easy-soft); border-color: var(--easy-border); }
-.cell-actions { text-align: right; white-space: nowrap; }
-.cell-actions .actions, .data-table tr .cell-actions { opacity: 1; }
+/* Pin the actions to the right edge and let them overflow the global td
+   ellipsis. The table is wide enough to scroll horizontally, and the generic
+   `td { overflow: hidden; text-overflow: ellipsis }` would otherwise truncate
+   the second button ("delete") to a "…". Sticky keeps edit/delete reachable
+   without scrolling all the way right; the background hides cells sliding
+   underneath. */
+.cell-actions {
+  text-align: right;
+  white-space: nowrap;
+  overflow: visible;
+  position: sticky;
+  right: 0;
+  background: var(--surface);
+}
+.data-table tbody tr:hover .cell-actions { background: var(--surface-2); }
+.data-table th:last-child {
+  position: sticky;
+  right: 0;
+  background: var(--surface-2);
+}
 .empty-row { text-align: center; padding: 32px !important; }
 
 /* ---- Shared item bits (used in the table) --------------------------------- */
