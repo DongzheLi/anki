@@ -28,16 +28,39 @@ export default function Dashboard() {
   const [editor, setEditor] = useState(null); // { item } | { item: null }
   const [dialog, setDialog] = useState(null);
 
+  // Who you are, and the other people whose decks you can view (sharing).
+  const [me, setMe] = useState("");
+  const [userOpts, setUserOpts] = useState([]); // [{email, name}] excluding me
+
   // Filter state.
   const [q, setQ] = useState("");
   const [fCats, setFCats] = useState([]);
   const [fTopicTags, setFTopicTags] = useState([]);
   const [fSources, setFSources] = useState([]);
   const [fDiffs, setFDiffs] = useState([]);
+  const [fUsers, setFUsers] = useState([]); // selected OTHER user names to also show
   const [dueOnly, setDueOnly] = useState(false);
 
-  const refresh = () => api.items().then(setItems);
-  useEffect(() => { refresh(); }, []);
+  const emailByName = useMemo(() => Object.fromEntries(userOpts.map((u) => [u.name, u.email])), [userOpts]);
+  const nameByEmail = useMemo(() => Object.fromEntries(userOpts.map((u) => [u.email, u.name])), [userOpts]);
+
+  // Always fetch your own deck; selected names widen it to those people's items.
+  const refresh = () => {
+    if (!me) return;
+    const extra = fUsers.map((n) => emailByName[n]).filter(Boolean);
+    return api.items([me, ...extra]).then(setItems);
+  };
+
+  useEffect(() => {
+    api.users()
+      .then(({ me: myEmail, users }) => {
+        setMe(myEmail);
+        setUserOpts(users.filter((u) => u.email !== myEmail));
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => { refresh(); }, [me, fUsers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Distinct option lists, derived from the data. Topic options narrow to the
   // selected category so the two dropdowns stay coherent.
@@ -72,9 +95,10 @@ export default function Dashboard() {
     setFTopicTags([]);
     setFSources([]);
     setFDiffs([]);
+    setFUsers([]);
     setDueOnly(false);
   };
-  const anyFilter = q || fCats.length || fTopicTags.length || fSources.length || fDiffs.length || dueOnly;
+  const anyFilter = q || fCats.length || fTopicTags.length || fSources.length || fDiffs.length || fUsers.length || dueOnly;
 
   async function deleteItem(it) {
     const ok = await new Promise((resolve) =>
@@ -112,6 +136,9 @@ export default function Dashboard() {
         <MultiCombobox value={fTopicTags} onChange={setFTopicTags} options={opts.topicTags} placeholder="Tags" />
         <MultiCombobox value={fSources} onChange={setFSources} options={opts.sources} placeholder="Sources" />
         <MultiCombobox value={fDiffs} onChange={setFDiffs} options={DIFFICULTIES} placeholder="Difficulty" />
+        {userOpts.length > 0 && (
+          <MultiCombobox value={fUsers} onChange={setFUsers} options={userOpts.map((u) => u.name)} placeholder="Other users" />
+        )}
         <label className="toggle">
           <input type="checkbox" checked={dueOnly} onChange={(e) => setDueOnly(e.target.checked)} /> Due only
         </label>
@@ -151,6 +178,11 @@ export default function Dashboard() {
                   <Link to={`/item/${it.id}`}>
                     {it.is_due && <span className="dot" title="due" />}
                     <span className="cell-title-text">{it.title}</span>
+                    {it.user_email && it.user_email !== me && (
+                      <span className="owner-badge" title={it.user_email}>
+                        {nameByEmail[it.user_email] || it.user_email}
+                      </span>
+                    )}
                   </Link>
                 </td>
                 <td className="muted">{it.category_name}</td>
@@ -203,8 +235,13 @@ export default function Dashboard() {
                   {it.last_practiced ? `${ago(it.last_practiced)} ago` : "never"}
                 </td>
                 <td className="cell-actions">
-                  <button className="btn xs ghost" onClick={() => editItem(it)}>edit</button>
-                  <button className="btn xs danger" onClick={() => deleteItem(it)}>delete</button>
+                  {/* Only the owner can edit/delete; others' rows are view-only. */}
+                  {it.user_email === me && (
+                    <>
+                      <button className="btn xs ghost" onClick={() => editItem(it)}>edit</button>
+                      <button className="btn xs danger" onClick={() => deleteItem(it)}>delete</button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}

@@ -287,6 +287,25 @@ a { color: var(--accent); text-decoration: none; }
 .cell-last { white-space: nowrap; }
 .faint { color: var(--faint); }
 
+/* Owner tag shown on rows belonging to another user (shared/“other users” view). */
+.owner-badge {
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft, var(--surface-2));
+  border: 1px solid var(--border);
+  padding: 0 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.readonly-note {
+  padding: 14px 16px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg, 8px);
+  background: var(--surface-2);
+}
+
 /* Difficulty chip = the last grade, click to filter. Tinted per feeling. */
 .cell-diff { white-space: nowrap; }
 .diff-chip {

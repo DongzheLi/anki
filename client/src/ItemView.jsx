@@ -12,11 +12,17 @@ export default function ItemView() {
   const { id } = useParams();
   const [item, setItem] = useState(null);
   const [flash, setFlash] = useState(null);
+  const [me, setMe] = useState("");
 
   const load = () => api.item(id).then(setItem);
   useEffect(() => { load(); }, [id]);
+  useEffect(() => { api.me().then((u) => setMe(u.email)).catch(() => {}); }, []);
 
   if (!item) return <p className="muted">Loading…</p>;
+
+  // You can open another person's item to read it and its history, but only the
+  // owner may practice it (practicing reschedules the card).
+  const owned = !item.user_email || item.user_email === me;
 
   return (
     <div className="item-view">
@@ -24,17 +30,21 @@ export default function ItemView() {
 
       {flash && <div className="flash">Logged · next due in {flash}d</div>}
 
-      <PracticePanel
-        item={item}
-        onGraded={async () => {
-          // Re-fetch to refresh the schedule preview + history, and surface the
-          // new interval we just earned.
-          const updated = await api.item(id);
-          setItem(updated);
-          setFlash(updated.interval);
-          setTimeout(() => setFlash(null), 2500);
-        }}
-      />
+      {owned ? (
+        <PracticePanel
+          item={item}
+          onGraded={async () => {
+            // Re-fetch to refresh the schedule preview + history, and surface the
+            // new interval we just earned.
+            const updated = await api.item(id);
+            setItem(updated);
+            setFlash(updated.interval);
+            setTimeout(() => setFlash(null), 2500);
+          }}
+        />
+      ) : (
+        <div className="readonly-note muted">Read-only — this item belongs to someone else.</div>
+      )}
 
       <section className="history">
         <h3>History ({item.history.length})</h3>

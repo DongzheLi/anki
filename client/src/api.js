@@ -18,11 +18,14 @@ const del = send("DELETE");
 
 export const api = {
   me: () => fetch("/api/me").then(json),
+  users: () => fetch("/api/users").then(json),
   tree: () => fetch("/api/tree").then(json),
   taxonomy: () => fetch("/api/taxonomy").then(json),
   stats: () => fetch("/api/stats").then(json),
   due: () => fetch("/api/due").then(json),
-  items: () => fetch("/api/items").then(json),
+  // Pass owner emails to widen the view to other users' decks (read-only).
+  items: (userEmails) =>
+    fetch(userEmails?.length ? `/api/items?user=${encodeURIComponent(userEmails.join(","))}` : "/api/items").then(json),
   item: (id) => fetch(`/api/items/${id}`).then(json),
 
   addCategory: (name) => post("/api/categories", { name }),
