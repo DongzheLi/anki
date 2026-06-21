@@ -29,7 +29,9 @@ UV_CACHE_DIR=.uv-cache uv sync --project server_py
 npm install            # root dev script helpers
 npm --prefix client install
 
-npm run dev            # FastAPI on :8000, Vite on :5173 (proxies /api)
+# ANKI_DEV_EMAIL is REQUIRED locally — see "Identity & per-user data" below.
+# Without it the data API returns 401 and the deck shows empty.
+ANKI_DEV_EMAIL=you@example.com npm run dev   # FastAPI on :8000, Vite on :5173 (proxies /api)
 ```
 
 Open http://localhost:5173.
@@ -37,9 +39,37 @@ Open http://localhost:5173.
 For a single-process production-style run:
 
 ```bash
-npm run build          # builds client into client/dist
-npm start              # FastAPI serves the API *and* the built client on :8000
+npm run build                                 # builds client into client/dist
+ANKI_DEV_EMAIL=you@example.com npm start      # FastAPI serves API + built client on :8000
 ```
+
+> The run scripts use `uv run python -m uvicorn …` rather than `uv run uvicorn`.
+> The bare console-script form fails on some machines with
+> `Failed to spawn: uvicorn`; the `python -m` form is equivalent and works
+> everywhere, so the npm scripts and `make server-py` all use it.
+
+## Identity & per-user data
+
+Every item is owned by a user (`items.user_email`), and the API scopes reads and
+writes to the caller's identity:
+
+- **Production** identity comes from Cloudflare Access, which authenticates at
+  the edge and injects a trusted `Cf-Access-Authenticated-User-Email` header.
+  The app only reads that header — it does no auth itself.
+- **Locally** there is no Access in front, so the server falls back to the
+  `ANKI_DEV_EMAIL` env var. It's required for any data endpoint; unset means 401.
+- Display names are mapped from email in `DISPLAY_NAMES` (`server_py/app.py`).
+
+Scoping rules a feature author must respect:
+
+- Reads (`/api/items`, `/api/due`, `/api/stats`, `/api/taxonomy`) default to the
+  caller's own deck. `/api/items?user=a@x,b@y` widens the view to other people's
+  items — **read-only sharing** ("see what I'm learning"), listed by `/api/users`.
+- Writes (create / edit / delete / practice) are **owner-only**; acting on
+  someone else's item returns 403.
+
+So any new endpoint that touches items must filter by `user_email` (use
+`current_email(request)`), or it will leak data across users.
 
 ## Using it
 

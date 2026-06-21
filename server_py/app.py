@@ -88,7 +88,6 @@ CREATE TABLE IF NOT EXISTS item_labels (
 CREATE INDEX IF NOT EXISTS idx_topics_category ON topics(category_id);
 CREATE INDEX IF NOT EXISTS idx_items_topic ON items(topic_id);
 CREATE INDEX IF NOT EXISTS idx_items_category ON items(category_id);
-CREATE INDEX IF NOT EXISTS idx_items_user ON items(user_email);
 CREATE INDEX IF NOT EXISTS idx_practices_item ON practices(item_id);
 CREATE INDEX IF NOT EXISTS idx_solutions_item ON solutions(item_id);
 CREATE INDEX IF NOT EXISTS idx_item_labels_label ON item_labels(label_id);
@@ -195,11 +194,14 @@ def init_db():
         conn.executescript(SCHEMA)
         # Migration: DBs created before per-user ownership won't get the new
         # column from CREATE TABLE IF NOT EXISTS, so add it explicitly. Existing
-        # rows stay NULL until backfilled to an owner (see ADDING ownership /
-        # deploy notes); a NULL-owner item belongs to nobody and is hidden.
+        # rows stay NULL until backfilled to an owner; a NULL-owner item belongs
+        # to nobody and is hidden. This must run BEFORE creating any index on
+        # user_email, hence the index lives here and not in SCHEMA — otherwise an
+        # old DB would fail the schema step on a column that doesn't exist yet.
         cols = {row[1] for row in conn.execute("PRAGMA table_info(items)").fetchall()}
         if "user_email" not in cols:
             conn.execute("ALTER TABLE items ADD COLUMN user_email TEXT")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_items_user ON items(user_email)")
     DB_READY = True
 
 
